@@ -111,16 +111,13 @@ class LexicalAnalyzer:
         else:
             raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
         # выражение
-        self.vyrazhenie()
+        self.vyrazhenie(line)
 
-    def vyrazhenie(self):
-        line = self.lines[self.current_line_number]
-        line = line.split(COMMENTS_START_SYMBOL)[0]
-
+    def vyrazhenie(self, line):
         if line[self.current_character_number] == ' ':
             self.current_character_number += 1
         # слагаемое
-        self.slagaemoe()
+        self.slagaemoe(line)
 
         # проверка конца строки
         if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
@@ -138,17 +135,14 @@ class LexicalAnalyzer:
             # слагаемое
             self.slagaemoe()
 
-    def slagaemoe(self):
-        line = self.lines[self.current_line_number]
-        line = line.split(COMMENTS_START_SYMBOL)[0]
-
+    def slagaemoe(self, line):
         if line[self.current_character_number] == ' ':
             self.current_character_number += 1
         # проверка конца строки
         if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
             raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
         # множитель
-        self.mnozhitel()
+        self.mnozhitel(line)
 
         while self.current_character_number < len(line):
 
@@ -163,19 +157,12 @@ class LexicalAnalyzer:
             if line[self.current_character_number] in {'*', '/'}:
                 self.equation_stack.append(line[self.current_character_number])
                 self.current_character_number += 1
-            else:
-                return
+                if line[self.current_character_number] == ' ':
+                    self.current_character_number += 1
+                # множитель
+                self.mnozhitel(line)
 
-            if line[self.current_character_number] == ' ':
-                self.current_character_number += 1
-            # множитель
-            self.mnozhitel()
-
-    def mnozhitel(self):
-        # идентификатор, прочитанный заарнее или число
-        line = self.lines[self.current_line_number]
-        line = line.split(COMMENTS_START_SYMBOL)[0]
-
+    def mnozhitel(self, line):
         # переменная
         if line[self.current_character_number] in TOKEN_ALLOWED_FIRST_SYMBOL:
             token = line[self.current_character_number]
@@ -208,7 +195,7 @@ class LexicalAnalyzer:
         elif line[self.current_character_number] == '(':
             self.current_character_number += 1
             self.equation_stack.append('(')
-            self.vyrazhenie()
+            self.vyrazhenie(line)
 
             if line[self.current_character_number] == ')':
                 self.current_character_number += 1
@@ -216,6 +203,18 @@ class LexicalAnalyzer:
             else:
                 raise SynthaxError("недопустимый символ", self.current_line_number + 1,
                                    self.current_character_number + 1)
+        elif line[self.current_character_number] == '\'':
+            self.current_character_number += 1
+            token = ''
+            while line[self.current_character_number] != '\'' and self.current_character_number < len(line):
+                token += line[self.current_character_number]
+                self.current_character_number += 1
+
+            if line[self.current_character_number] == '\'':
+                self.current_character_number += 1
+
+            self.equation_stack.append(token)
+
 
     def analyze(self):
         with (open(self.program_filename, 'r') as f):
@@ -232,6 +231,7 @@ class LexicalAnalyzer:
                 if line.startswith(COMMENTS_START_SYMBOL):
                     continue
 
+                self.current_character_number = 0
                 while self.current_character_number < len(line_without_comments):
                     self.current_line_number = line_number
                     c = line_without_comments[self.current_character_number]
@@ -244,6 +244,7 @@ class LexicalAnalyzer:
                     if c in TOKEN_ALLOWED_FIRST_SYMBOL:
                         self.uravnenie()
                         self.identifier_table[self.equation_stack[0]] = self.equation_stack[2:]
+                        self.equation_stack.clear()
                     self.current_character_number += 1
 
 
