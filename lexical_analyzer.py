@@ -39,6 +39,7 @@ class TokenConstructions(Enum):
     ELIF_DECLARATION_EXPRESSION = 22
     ELIF_DECLARATION_EXPRESSION_NOT_OPERATOR = 23
 
+
 class SynthaxError(Exception):
     error_text = None
     line_number = None
@@ -94,9 +95,9 @@ class LexicalAnalyzer:
         line = line.split(COMMENTS_START_SYMBOL)[0]
         # идентификатор
         token = ''
+        if line[self.current_character_number] not in TOKEN_ALLOWED_FIRST_SYMBOL:
+            raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
         while line[self.current_character_number] not in {'=', ' '}:
-            if self.current_character_number == 0 and line[self.current_character_number] not in TOKEN_ALLOWED_FIRST_SYMBOL:
-                raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
             token += line[self.current_character_number]
             self.current_character_number += 1
         # символ равно
@@ -104,6 +105,8 @@ class LexicalAnalyzer:
             self.current_character_number += 1
         if line[self.current_character_number] == '=':
             self.current_character_number += 1
+        else:
+            raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
         # выражение
         self.vyrazhenie()
 
@@ -120,16 +123,16 @@ class LexicalAnalyzer:
         if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
             return
 
-        # символ сложения или вычитания
-        if line[self.current_character_number] == ' ':
-            self.current_character_number += 1
-        if line[self.current_character_number] in {'+', '-'}:
-            self.current_character_number += 1
-        else:
-            raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
-        # слагаемое
-        self.slagaemoe()
-        pass
+        while self.current_character_number < len(line):
+            # символ сложения или вычитания
+            if line[self.current_character_number] == ' ':
+                self.current_character_number += 1
+            if line[self.current_character_number] in {'+', '-'}:
+                self.current_character_number += 1
+            else:
+                return
+            # слагаемое
+            self.slagaemoe()
 
     def slagaemoe(self):
         line = self.lines[self.current_line_number]
@@ -143,27 +146,39 @@ class LexicalAnalyzer:
         # множитель
         self.mnozhitel()
 
-        # проверка конца строки
-        if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
-            return
+        while self.current_character_number < len(line):
 
-        # символ умножения или деления
-        if line[self.current_character_number] in {'*', '/'}:
-            self.current_character_number += 1
-        # множитель
-        self.mnozhitel()
-        pass
+            # проверка конца строки
+            if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
+                return
+
+            if line[self.current_character_number] == ' ':
+                self.current_character_number += 1
+
+            # символ умножения или деления
+            if line[self.current_character_number] in {'*', '/'}:
+                self.current_character_number += 1
+            else:
+                return
+
+            if line[self.current_character_number] == ' ':
+                self.current_character_number += 1
+            # множитель
+            self.mnozhitel()
 
     def mnozhitel(self):
         # идентификатор, прочитанный заарнее или число
         line = self.lines[self.current_line_number]
         line = line.split(COMMENTS_START_SYMBOL)[0]
+
+        # переменная
         if line[self.current_character_number] in TOKEN_ALLOWED_FIRST_SYMBOL:
             token = line[self.current_character_number]
             self.current_character_number += 1
             while line[self.current_character_number] in TOKEN_ALLOWED_SYMBOLS:
                 token += line[self.current_character_number]
                 self.current_character_number += 1
+        # число
         elif line[self.current_character_number] in string.digits:
             token = line[self.current_character_number]
             self.current_character_number += 1
@@ -182,6 +197,16 @@ class LexicalAnalyzer:
                 while line[self.current_character_number] in string.digits:
                     token += line[self.current_character_number]
                 self.current_character_number += 1
+        # скобки
+        elif line[self.current_character_number] == '(':
+            self.current_character_number += 1
+            self.vyrazhenie()
+
+            if line[self.current_character_number] == ')':
+                self.current_character_number += 1
+            else:
+                raise SynthaxError("недопустимый символ", self.current_line_number + 1,
+                                   self.current_character_number + 1)
 
     def analyze(self):
         with (open(self.program_filename, 'r') as f):
@@ -198,18 +223,19 @@ class LexicalAnalyzer:
                 if line.startswith(COMMENTS_START_SYMBOL):
                     continue
 
-                for character_number in range(len(line_without_comments)):
+                while self.current_character_number < len(line_without_comments):
                     self.current_line_number = line_number
-                    self.current_character_number = character_number
                     c = line_without_comments[self.current_character_number]
 
                     # проверка первого символа
                     if c not in TOKEN_ALLOWED_FIRST_SYMBOL \
-                            and character_number + 1 == current_indent * INDENTATION_NUMBER_OF_WHITESPACES:
-                        raise SynthaxError("недопустимый символ", self.current_line_number + 1, character_number + 1)
+                            and self.current_character_number + 1 == current_indent * INDENTATION_NUMBER_OF_WHITESPACES:
+                        raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
 
                     if c in TOKEN_ALLOWED_FIRST_SYMBOL:
                         self.uravnenie()
+
+                    self.current_character_number += 1
 
 
             print("------- identifier table -------")
