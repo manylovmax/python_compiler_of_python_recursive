@@ -100,11 +100,14 @@ class LexicalAnalyzer:
         while line[self.current_character_number] not in {'=', ' '}:
             token += line[self.current_character_number]
             self.current_character_number += 1
+
+        self.equation_stack.append(token)
         # символ равно
         if line[self.current_character_number] == ' ':
             self.current_character_number += 1
         if line[self.current_character_number] == '=':
             self.current_character_number += 1
+            self.equation_stack.append('=')
         else:
             raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
         # выражение
@@ -128,6 +131,7 @@ class LexicalAnalyzer:
             if line[self.current_character_number] == ' ':
                 self.current_character_number += 1
             if line[self.current_character_number] in {'+', '-'}:
+                self.equation_stack.append(line[self.current_character_number])
                 self.current_character_number += 1
             else:
                 return
@@ -157,6 +161,7 @@ class LexicalAnalyzer:
 
             # символ умножения или деления
             if line[self.current_character_number] in {'*', '/'}:
+                self.equation_stack.append(line[self.current_character_number])
                 self.current_character_number += 1
             else:
                 return
@@ -178,6 +183,7 @@ class LexicalAnalyzer:
             while line[self.current_character_number] in TOKEN_ALLOWED_SYMBOLS:
                 token += line[self.current_character_number]
                 self.current_character_number += 1
+            self.equation_stack.append(token)
         # число
         elif line[self.current_character_number] in string.digits:
             token = line[self.current_character_number]
@@ -197,13 +203,16 @@ class LexicalAnalyzer:
                 while line[self.current_character_number] in string.digits:
                     token += line[self.current_character_number]
                 self.current_character_number += 1
+            self.equation_stack.append(token)
         # скобки
         elif line[self.current_character_number] == '(':
             self.current_character_number += 1
+            self.equation_stack.append('(')
             self.vyrazhenie()
 
             if line[self.current_character_number] == ')':
                 self.current_character_number += 1
+                self.equation_stack.append(')')
             else:
                 raise SynthaxError("недопустимый символ", self.current_line_number + 1,
                                    self.current_character_number + 1)
@@ -234,7 +243,7 @@ class LexicalAnalyzer:
 
                     if c in TOKEN_ALLOWED_FIRST_SYMBOL:
                         self.uravnenie()
-
+                        self.identifier_table[self.equation_stack[0]] = self.equation_stack[2:]
                     self.current_character_number += 1
 
 
