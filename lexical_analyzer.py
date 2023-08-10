@@ -241,8 +241,8 @@ class LexicalAnalyzer:
         pass
 
     def rollback(self):
-        self.current_line = self.saved_position['line']
-        self.current_character = self.saved_position['character']
+        self.current_line_number = self.saved_position['line']
+        self.current_character_number = self.saved_position['character']
 
     def save_statement(self):
         self.saved_position = {'line': self.current_line_number, 'character': self.current_character_number}
@@ -563,7 +563,7 @@ class LexicalAnalyzer:
 
     def on_Declaration(self):
         self.get_token()
-        if not self.current_token.type == TokenType.IDENTIFIER:
+        if not self.current_token_type == TokenType.IDENTIFIER:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
 
     def on_Condition_block(self):
