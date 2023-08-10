@@ -562,7 +562,7 @@ class LexicalAnalyzer:
         return True
 
     def on_Declaration(self):
-        self.get_next_token()
+        self.get_token()
         if not self.current_token.type == TokenType.IDENTIFIER:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
 
@@ -570,12 +570,11 @@ class LexicalAnalyzer:
         pass
 
     def on_Program(self):
-        while self.current_position < len(self.program_text):
-            self.get_next_token()
-            if self.current_token.type == TokenType.IDENTIFIER:
+        while self.get_token():
+            if self.current_token_type == TokenType.IDENTIFIER:
                 self.rollback()
                 self.on_Declaration()
-            elif self.current_token.type == TokenType.KEYWORD_IF:
+            elif self.current_token_type == TokenType.KEYWORD_IF:
                 self.rollback()
                 self.on_Condition_block()
 
