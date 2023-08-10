@@ -15,6 +15,7 @@ INDENTATION_NUMBER_OF_WHITESPACES = 4
 
 class TokenConstructions(Enum):
     NEW_IDENTIFIER = auto()
+    NEW_IDENTIFIER_END = auto()
     IF_DECLARATION_START = auto()
     ELIF_DECLARATION_START = auto()
     FUNCTION_CALL_START = auto()
@@ -26,6 +27,7 @@ class TokenConstructions(Enum):
     NEW_CONSTANT_INTEGER_END = auto()
     NEW_CONSTANT_FLOAT = auto()
     NEW_CONSTANT_FLOAT_END = auto()
+    END_OF_FILE = auto()
 
 
 class TokenType(Enum):
@@ -249,12 +251,18 @@ class LexicalAnalyzer:
         return res
 
     def _get_token(self):
+        if self.current_state == TokenConstructions.END_OF_FILE:
+            return False
+
         line = self.lines[self.current_line_number]
         # логика обработки лексем и помещения токена в переменную
         line_without_comments = line.split(COMMENTS_START_SYMBOL)[0]
         # если вся строка это комментарий - пропустить строку
-        while line.startswith(COMMENTS_START_SYMBOL):
+        while line.startswith(COMMENTS_START_SYMBOL) and len(self.lines) > self.current_line_number:
             self.current_line_number += 1
+            self.current_character_number = 0
+            if len(self.lines) == self.current_line_number + 1:
+                return False
             line = self.lines[self.current_line_number]
             line_without_comments = line.split(COMMENTS_START_SYMBOL)[0]
 
@@ -299,18 +307,18 @@ class LexicalAnalyzer:
             elif c in TOKEN_ALLOWED_SYMBOLS and self.current_state == TokenConstructions.NEW_IDENTIFIER:
                 token += c
             elif c == '=' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
-                self.set_state(TokenConstructions.EQUATION_NEW_IDENTIFIER_END)
+                self.set_state(TokenConstructions.NEW_IDENTIFIER_END)
                 self.current_token = Token(token, TokenType.IDENTIFIER)
                 self.set_identifier(token)
                 token = ''
                 self.current_character_number -= 1
                 return True
-            elif c == '=' and self.current_state == TokenConstructions.EQUATION_NEW_IDENTIFIER_END:
+            elif c == '=' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
                 self.set_state(TokenConstructions.EQUATION)
                 self.current_token = Token(c, TokenType.SIGN_EQUATION)
                 return True
             elif c == ' ' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
-                self.set_state(TokenConstructions.EQUATION_NEW_IDENTIFIER_END)
+                self.set_state(TokenConstructions.NEW_IDENTIFIER_END)
                 self.current_token = Token(token, TokenType.IDENTIFIER)
                 self.set_identifier(token)
                 token = ''
@@ -342,14 +350,21 @@ class LexicalAnalyzer:
             elif c == '\n':
                 pass # обработка ниже
             else:
+                print(repr(self.state_stack))
                 raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
 
-            if c == '\n' or len(line_without_comments) == self.current_character_number:
+            if c == '\n' or len(line_without_comments) == self.current_character_number - 1:
+
+                if len(self.lines) > self.current_line_number + 1:
+                    self.current_line_number += 1
+                    self.current_character_number = 0
+                else:
+                    self.set_state(TokenConstructions.END_OF_FILE)
+
                 # сброс обязательности отступа после условного оператора
                 if self.is_indent_obliged:
                     self.is_indent_obliged = False
                     self.is_logical_expression = False
-
 
                 if self.current_state == TokenConstructions.NEW_IDENTIFIER:
                     self.set_state(None)
@@ -369,15 +384,14 @@ class LexicalAnalyzer:
                     self.set_identifier(token)
                     token = ''
                     return True
+                elif self.current_state in {TokenConstructions.NEW_CONSTANT_FLOAT_END,
+                                            TokenConstructions.NEW_CONSTANT_INTEGER_END}:
+                    self.set_state(None)
+
 
             self.current_character_number += 1
 
-        if len(self.lines) < self.current_line_number + 1:
-            self.current_line_number += 1
-        else:
-            return False
-
-        return True
+        return False
 
     def on_Declaration(self):
         self.get_token()
