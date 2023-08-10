@@ -337,6 +337,12 @@ class LexicalAnalyzer:
                 token += c
             elif c in string.digits and self.current_state == TokenConstructions.NEW_CONSTANT_FLOAT:
                 token += c
+            elif c == ' ' and self.current_state == TokenConstructions.EQUATION:
+                pass
+            elif c == '\n':
+                pass # обработка ниже
+            else:
+                raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
 
             if c == '\n' or len(line_without_comments) == self.current_character_number:
                 # сброс обязательности отступа после условного оператора
@@ -346,19 +352,19 @@ class LexicalAnalyzer:
 
 
                 if self.current_state == TokenConstructions.NEW_IDENTIFIER:
-                    self.set_state(TokenConstructions.EQUATION_NEW_IDENTIFIER_END)
+                    self.set_state(None)
                     self.current_token = Token(token, TokenType.IDENTIFIER)
                     self.set_identifier(token)
                     token = ''
                     return True
                 elif self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
-                    self.set_state(TokenConstructions.NEW_CONSTANT_INTEGER_END)
+                    self.set_state(None)
                     self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
                     self.set_identifier(token)
                     token = ''
                     return True
                 elif self.current_state == TokenConstructions.NEW_CONSTANT_FLOAT:
-                    self.set_state(TokenConstructions.NEW_CONSTANT_FLOAT_END)
+                    self.set_state(None)
                     self.current_token = Token(token, TokenType.CONSTANT_FLOAT)
                     self.set_identifier(token)
                     token = ''
