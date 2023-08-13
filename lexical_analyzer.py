@@ -77,9 +77,8 @@ class LexicalAnalyzer:
     equation_stack = []
     state_stack = []
     identifier_table = dict()
-    saved_position = {'line': 0, 'character': 0}
+    saved_position = {'line': 0, 'character': 0, 'state': None}
     current_token = ''
-    current_token_type = None
     liens = ''
     current_line_number = 0
     current_character_number = 0
@@ -241,9 +240,10 @@ class LexicalAnalyzer:
     def rollback(self):
         self.current_line_number = self.saved_position['line']
         self.current_character_number = self.saved_position['character']
+        self.current_state = self.saved_position['state']
 
     def save_statement(self):
-        self.saved_position = {'line': self.current_line_number, 'character': self.current_character_number}
+        self.saved_position = {'line': self.current_line_number, 'character': self.current_character_number, 'state': self.current_state}
 
     def get_token(self):
         res = self._get_token()
@@ -395,7 +395,13 @@ class LexicalAnalyzer:
 
     def on_Declaration(self):
         self.get_token()
-        if not self.current_token_type == TokenType.IDENTIFIER:
+        if not self.current_token.type == TokenType.IDENTIFIER:
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
+        self.get_token()
+        if not self.current_token.type == TokenType.SIGN_EQUATION:
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
+        self.get_token()
+        if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.CONSTANT_FLOAT}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
 
     def on_Condition_block(self):
@@ -416,9 +422,9 @@ class LexicalAnalyzer:
     def analyze(self):
         with (open(self.program_filename, 'r') as f):
             self.lines = f.readlines()
-            text = ''
-            while(self.get_token()):
-                text += self.current_token.value
-
-            print(text)
-            # self.on_Program()
+            # text = ''
+            # while(self.get_token()):
+            #     text += self.current_token.value
+            #
+            # print(text)
+            self.on_Program()
