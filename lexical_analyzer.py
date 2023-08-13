@@ -396,13 +396,13 @@ class LexicalAnalyzer:
     def on_Declaration(self):
         self.get_token()
         if not self.current_token.type == TokenType.IDENTIFIER:
-            raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
         self.get_token()
         if not self.current_token.type == TokenType.SIGN_EQUATION:
-            raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
         self.get_token()
         if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.CONSTANT_FLOAT}:
-            raise SynthaxError(f"недопустимый идентификатор {self.current_token}", self.current_line_number + 1, self.current_character_number + 1)
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
 
     def on_Condition_block(self):
         pass
