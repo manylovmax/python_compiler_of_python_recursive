@@ -6,7 +6,7 @@ class CodeGenerator:
 
     def add_declarations(self, identifier_table):
         self._out_text += '.DATA\n'
-        for k,v in identifier_table.values():
+        for k,v in identifier_table.items():
             self._out_text += 'var_' + k + '    dw    ' + str(v) + '\n'
         self._out_text += '\n'
 

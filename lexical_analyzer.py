@@ -2,6 +2,9 @@ import string
 from copy import copy
 from enum import Enum, auto
 
+from code_generator import CodeGenerator
+
+
 TOKEN_ALLOWED_SYMBOLS = string.ascii_letters + string.digits + '_'
 TOKEN_ALLOWED_FIRST_SYMBOL = string.ascii_letters + '_'
 COMMENTS_START_SYMBOL = '#'
@@ -333,6 +336,11 @@ class LexicalAnalyzer:
                     self.current_token = Token(token, TokenType.KEYWORD_IF)
                     self.indentation_stack.append('if')
                     self.indent_obliged_counter = 2
+                # elif token == 'elif':
+                #     self.set_state(TokenConstructions.ELIF_DECLARATION_START)
+                #     self.current_token = Token(token, TokenType.KEYWORD_ELIF)
+                #     self.indentation_stack.append('elif')
+                #     self.indent_obliged_counter = 2
                 else:
                     self.set_state(TokenConstructions.NEW_IDENTIFIER_END)
                     self.current_token = Token(token, TokenType.IDENTIFIER)
@@ -433,12 +441,17 @@ class LexicalAnalyzer:
         self.get_token()
         if not self.current_token.type == TokenType.IDENTIFIER:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
+        identifier = self.current_token.value
         self.get_token()
         if not self.current_token.type == TokenType.SIGN_EQUATION:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
         self.get_token()
+        value = self.current_token.value
         if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.CONSTANT_FLOAT, TokenType.IDENTIFIER}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
+
+        if identifier not in self.identifier_table.keys():
+            self.identifier_table[identifier] = value
 
     def on_If_block(self):
         self.get_token()
@@ -546,6 +559,7 @@ class LexicalAnalyzer:
 
     def analyze(self):
         with (open(self.program_filename, 'r') as f):
+            cg = CodeGenerator()
             self.lines = f.readlines()
 
             # text = ''
@@ -555,3 +569,10 @@ class LexicalAnalyzer:
             # print(text)
 
             self.on_Program()
+            cg.add_declarations(self.identifier_table)
+            cg.out('out.asm')
+
+            print("------- identifier table -------")
+            for k, v in self.identifier_table.items():
+                print(f"{k} = {v}")
+            print("------- ---------------- -------")

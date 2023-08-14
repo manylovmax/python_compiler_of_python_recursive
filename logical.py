@@ -1,6 +1,6 @@
-a = True
+a = 1
 if a:
-    b = True
+    a = 0
 # elif not a:
 #     b = False
 # else:
