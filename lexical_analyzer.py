@@ -84,7 +84,7 @@ class LexicalAnalyzer:
     equation_stack = []
     state_stack = []
     identifier_table = dict()
-    saved_position = {'line': 0, 'character': 0, 'state': None, 'indentation_stack': []}
+    saved_position = {'line': 0, 'character': 0, 'state': None, 'indentation_stack': [], 'indent_obliged_counter': 0}
     current_token = ''
     liens = ''
     current_line_number = 0
@@ -252,12 +252,15 @@ class LexicalAnalyzer:
         self.current_character_number = self.saved_position['character']
         self.set_state(self.saved_position['state'])
         self.indentation_stack = self.saved_position['indentation_stack']
+        self.current_indent = len(self.saved_position['indentation_stack'])
+        self.indent_obliged_counter = self.saved_position['indent_obliged_counter']
 
     def save_statement(self):
         self.saved_position = {'line': self.current_line_number,
                                'character': self.current_character_number,
                                'state': self.current_state,
-                               'indentation_stack': copy(self.indentation_stack)}
+                               'indentation_stack': copy(self.indentation_stack),
+                               'indent_obliged_counter': self.indent_obliged_counter}
 
     def get_token(self):
         res = self._get_token()
@@ -293,6 +296,9 @@ class LexicalAnalyzer:
                         raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
                     else:
                         self.current_indent -= 1
+                        self.indentation_stack.pop()
+                        self.current_token = Token('', TokenType.ENDBLOCK)
+                        return True
                 else:
                     if c == 'e':
                         self.set_state(TokenConstructions.ELIF_DECLARATION_START)
@@ -555,7 +561,6 @@ class LexicalAnalyzer:
                 self.on_If_block()
 
             self.save_statement()
-
 
     def analyze(self):
         with (open(self.program_filename, 'r') as f):
