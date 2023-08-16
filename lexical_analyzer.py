@@ -517,26 +517,36 @@ class LexicalAnalyzer:
         if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
                                self.current_character_number + 1)
+        first_variable = self.current_token.value
 
         self.get_token()
         if not self.current_token.type in {TokenType.SIGN_GREATER, TokenType.SIGN_LESS, TokenType.SIGN_EQUAL}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
                                self.current_character_number + 1)
+        if self.current_token.type == TokenType.SIGN_GREATER:
+            operator = 'jle'
+        elif self.current_token.type == TokenType.SIGN_EQUAL:
+            operator = 'jne'
+        elif self.current_token.type == TokenType.SIGN_LESS:
+            operator = 'jge'
 
         self.get_token()
         if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
                                self.current_character_number + 1)
+        second_variable = self.current_token.value
 
         self.get_token()
         if not self.current_token.type == TokenType.SIGN_COLON:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
 
         self.save_statement()
+        self.cg.add_line(f'cmp {first_variable}, {second_variable}')
+        self.cg.add_line(f'{operator} J{self.if_declaration_counter}')
 
         while self.get_token():
             if self.current_token.type == TokenType.ENDBLOCK:
-                return
+                break
 
             if self.current_token.type == TokenType.IDENTIFIER:
                 self.rollback()
@@ -550,7 +560,9 @@ class LexicalAnalyzer:
                 self.rollback()
                 self.on_Else_block()
                 self.save_statement()
-                return
+                break
+
+        self.cg.add_line(f'J{self.if_declaration_counter}:')
 
     def on_Elif_block(self):
         self.get_token()
