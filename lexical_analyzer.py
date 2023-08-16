@@ -33,6 +33,9 @@ class TokenConstructions(Enum):
     NEW_CONSTANT_FLOAT = auto()
     NEW_CONSTANT_FLOAT_END = auto()
     END_OF_FILE = auto()
+    SIGN_GREATER = auto()
+    SIGN_LESS = auto()
+    SIGN_EQUAL = auto()
 
 
 class TokenType(Enum):
@@ -53,6 +56,9 @@ class TokenType(Enum):
     SIGN_LBR = auto()
     SIGN_RBR = auto()
     ENDBLOCK = auto()
+    SIGN_GREATER = auto()
+    SIGN_LESS = auto()
+    SIGN_EQUAL = auto()
 
 
 class Token:
@@ -109,6 +115,7 @@ class LexicalAnalyzer:
         self.current_state = None
         self.state_stack = []
         self.set_state(None)
+        self.if_declaration_counter = 0
 
     def check_identifier_not_keyword(self, identifier, line_number, current_character_number):
         if identifier in PROGRAM_KEYWORDS:
@@ -320,7 +327,12 @@ class LexicalAnalyzer:
                     raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
 
             # переключение автомата на другое состояние (матрица переходов)
-            if c in TOKEN_ALLOWED_FIRST_SYMBOL and self.current_state in {None, TokenConstructions.EQUATION, TokenConstructions.IF_DECLARATION_START}:
+            if c in TOKEN_ALLOWED_FIRST_SYMBOL and self.current_state in {None,
+                                                                          TokenConstructions.EQUATION,
+                                                                          TokenConstructions.IF_DECLARATION_START,
+                                                                          TokenConstructions.SIGN_EQUAL,
+                                                                          TokenConstructions.SIGN_LESS,
+                                                                          TokenConstructions.SIGN_GREATER}:
                 self.set_state(TokenConstructions.NEW_IDENTIFIER)
                 token += c
             elif c in TOKEN_ALLOWED_SYMBOLS and self.current_state == TokenConstructions.NEW_IDENTIFIER:
@@ -333,9 +345,22 @@ class LexicalAnalyzer:
                 return True
             elif c == '=' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
                 self.set_state(TokenConstructions.EQUATION)
+                # self.current_character_number += 1
+                # return True
+            elif c == '=' and self.current_state == TokenConstructions.EQUATION:
+                self.set_state(TokenConstructions.SIGN_EQUAL)
+                self.current_token = Token(c, TokenType.SIGN_EQUAL)
+                self.current_character_number += 1
+                return True
+            elif c == ' ' and self.current_state == TokenConstructions.EQUATION:
                 self.current_token = Token(c, TokenType.SIGN_EQUATION)
                 self.current_character_number += 1
                 return True
+            elif c in TOKEN_ALLOWED_FIRST_SYMBOL and self.current_state == TokenConstructions.EQUATION:
+                self.current_token = Token(c, TokenType.SIGN_EQUATION)
+                self.current_character_number += 1
+                return True
+            
             elif c == ' ' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
                 if token == 'if':
                     self.set_state(TokenConstructions.IF_DECLARATION_START)
@@ -368,7 +393,10 @@ class LexicalAnalyzer:
                 token = ''
                 self.current_character_number += 1
                 return True
-            elif c in string.digits and self.current_state == TokenConstructions.EQUATION:
+            elif c in string.digits and self.current_state in {TokenConstructions.EQUATION,
+                                                               TokenConstructions.SIGN_GREATER,
+                                                               TokenConstructions.SIGN_LESS,
+                                                               TokenConstructions.SIGN_EQUAL}:
                 self.set_state(TokenConstructions.NEW_CONSTANT_INTEGER)
                 token += c
             elif c in string.digits and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
@@ -378,10 +406,13 @@ class LexicalAnalyzer:
                 token += c
             elif c in string.digits and self.current_state == TokenConstructions.NEW_CONSTANT_FLOAT:
                 token += c
-            elif c == ' ' and self.current_state == TokenConstructions.EQUATION:
-                pass
             elif c == ':' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
                 self.current_token = Token(token, TokenType.IDENTIFIER)
+                self.set_state(TokenConstructions.COLON)
+                token = ''
+                return True
+            elif c == ':' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
+                self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
                 self.set_state(TokenConstructions.COLON)
                 token = ''
                 return True
@@ -390,6 +421,22 @@ class LexicalAnalyzer:
                 token = ''
                 self.current_character_number += 1
                 return True
+
+            elif c == '>' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
+                self.current_token = Token(token, TokenType.SIGN_GREATER)
+                self.set_state(TokenConstructions.SIGN_GREATER)
+                token = ''
+                self.current_character_number += 1
+                return True
+
+            elif c == '<' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
+                self.current_token = Token(token, TokenType.SIGN_LESS)
+                self.set_state(TokenConstructions.SIGN_LESS)
+                token = ''
+                self.current_character_number += 1
+                return True
+            elif c == ' ' and self.current_state in {TokenConstructions.SIGN_GREATER, TokenConstructions.SIGN_LESS, TokenConstructions.SIGN_EQUAL}:
+                pass
             elif c == '\n':
                 pass # обработка ниже
             else:
@@ -453,18 +500,33 @@ class LexicalAnalyzer:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
         self.get_token()
         value = self.current_token.value
-        if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.CONSTANT_FLOAT, TokenType.IDENTIFIER}:
+        if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
 
         if identifier not in self.identifier_table.keys():
             self.identifier_table[identifier] = value
+        else:
+            self.cg.add_line('mov var_' + identifier + ', ' + value)
 
     def on_If_block(self):
         self.get_token()
         if not self.current_token.type == TokenType.KEYWORD_IF:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
 
-        self.on_Logical_expression()
+        self.get_token()
+        if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
+                               self.current_character_number + 1)
+
+        self.get_token()
+        if not self.current_token.type in {TokenType.SIGN_GREATER, TokenType.SIGN_LESS, TokenType.SIGN_EQUAL}:
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
+                               self.current_character_number + 1)
+
+        self.get_token()
+        if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
+            raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
+                               self.current_character_number + 1)
 
         self.get_token()
         if not self.current_token.type == TokenType.SIGN_COLON:
@@ -564,7 +626,7 @@ class LexicalAnalyzer:
 
     def analyze(self):
         with (open(self.program_filename, 'r') as f):
-            cg = CodeGenerator()
+            self.cg = CodeGenerator()
             self.lines = f.readlines()
 
             # text = ''
@@ -574,8 +636,8 @@ class LexicalAnalyzer:
             # print(text)
 
             self.on_Program()
-            cg.add_declarations(self.identifier_table)
-            cg.out('out.asm')
+            self.cg.add_declarations(self.identifier_table)
+            self.cg.out('out.asm')
 
             print("------- identifier table -------")
             for k, v in self.identifier_table.items():

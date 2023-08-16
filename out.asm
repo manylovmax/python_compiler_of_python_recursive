@@ -1,8 +1,10 @@
-.MODEL SMALL
-.DATA
+.model small
+.data
 var_a    dw    1
 var_b    dw    2
 
-.CODE
+start:
+mov var_a, 0
 
-END
+end start
+end
