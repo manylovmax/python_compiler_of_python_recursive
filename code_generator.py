@@ -17,6 +17,10 @@ class CodeGenerator:
     def out(self, filename):
         with open(filename, 'w') as f:
             self._out_text += self._code_text
+            self._out_text += '\nmov AH, 1h ; ожидать ввода любого символа'
+            self._out_text += '\nint 21h'
+            self._out_text += '\nmov AX, 4c00h ; завершение программы'
+            self._out_text += '\nint 21h'
             self._out_text += '\nend start'
             self._out_text += '\nend'
             f.write(self._out_text)
