@@ -523,7 +523,7 @@ class LexicalAnalyzer:
         if first_variable.type == TokenType.IDENTIFIER:
             first_variable = 'var_' + first_variable.value
         else:
-            first_variable = self.first_variable.value
+            first_variable = first_variable.value
 
         self.get_token()
         if not self.current_token.type in {TokenType.SIGN_GREATER, TokenType.SIGN_LESS, TokenType.SIGN_EQUAL}:
