@@ -509,6 +509,8 @@ class LexicalAnalyzer:
             self.cg.add_line('mov var_' + identifier + ', ' + value)
 
     def on_If_block(self):
+        current_if_declaration_counter = self.if_declaration_counter
+        self.if_declaration_counter += 1
         self.get_token()
         if not self.current_token.type == TokenType.KEYWORD_IF:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
@@ -517,7 +519,11 @@ class LexicalAnalyzer:
         if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
                                self.current_character_number + 1)
-        first_variable = self.current_token.value
+        first_variable = self.current_token
+        if first_variable.type == TokenType.IDENTIFIER:
+            first_variable = 'var_' + first_variable.value
+        else:
+            first_variable = self.first_variable.value
 
         self.get_token()
         if not self.current_token.type in {TokenType.SIGN_GREATER, TokenType.SIGN_LESS, TokenType.SIGN_EQUAL}:
@@ -534,7 +540,11 @@ class LexicalAnalyzer:
         if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1,
                                self.current_character_number + 1)
-        second_variable = self.current_token.value
+        second_variable = self.current_token
+        if second_variable.type == TokenType.IDENTIFIER:
+            second_variable = 'var_' + second_variable.value
+        else:
+            second_variable = second_variable.value
 
         self.get_token()
         if not self.current_token.type == TokenType.SIGN_COLON:
@@ -542,7 +552,7 @@ class LexicalAnalyzer:
 
         self.save_statement()
         self.cg.add_line(f'cmp {first_variable}, {second_variable}')
-        self.cg.add_line(f'{operator} J{self.if_declaration_counter}')
+        self.cg.add_line(f'{operator} J{current_if_declaration_counter}')
 
         while self.get_token():
             if self.current_token.type == TokenType.ENDBLOCK:
@@ -562,7 +572,7 @@ class LexicalAnalyzer:
                 self.save_statement()
                 break
 
-        self.cg.add_line(f'J{self.if_declaration_counter}:')
+        self.cg.add_line(f'J{current_if_declaration_counter}:')
 
     def on_Elif_block(self):
         self.get_token()
