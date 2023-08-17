@@ -499,14 +499,18 @@ class LexicalAnalyzer:
         if not self.current_token.type == TokenType.SIGN_EQUATION:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
         self.get_token()
-        value = self.current_token.value
+        second_variable = self.current_token
+        if second_variable.type == TokenType.IDENTIFIER:
+            second_variable = 'var_' + second_variable.value
+        else:
+            second_variable = second_variable.value
         if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
 
         if identifier not in self.identifier_table.keys():
-            self.identifier_table[identifier] = value
+            self.identifier_table[identifier] = second_variable
         else:
-            self.cg.add_line('mov var_' + identifier + ', ' + value)
+            self.cg.add_line('mov var_' + identifier + ', ' + second_variable)
 
     def on_If_block(self):
         current_if_declaration_counter = self.if_declaration_counter
