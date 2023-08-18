@@ -36,6 +36,12 @@ class TokenConstructions(Enum):
     SIGN_GREATER = auto()
     SIGN_LESS = auto()
     SIGN_EQUAL = auto()
+    LBR = auto()
+    RBR = auto()
+    SIGN_MULTIPLICATION = auto()
+    SIGN_DIVISION = auto()
+    SIGN_PLUS = auto()
+    SIGN_MINUS = auto()
 
 
 class TokenType(Enum):
@@ -65,6 +71,42 @@ class Token:
     def __init__(self, value, type):
         self.value = value
         self.type = type
+
+    def Priority(self):
+        if self.type == TokenType.SIGN_PLUS:
+            return 0
+        elif self.type == TokenType.SIGN_MINUS:
+            return 1
+        elif self.type == TokenType.SIGN_MULTIPLICATION:
+            return 2
+        elif self.type == TokenType.SIGN_DIVISION:
+            return 3
+        else:
+            return 100
+
+    def __lt__(self, other):
+        return self.Priority() < other.Priority()
+
+
+class Node:
+    _value: Token = None  # Token - указатель на токен
+    _next: list = list()  # список указателей на другие узлы
+
+    def reverse(self, res: list):
+        if self._next:
+            for n in self._next:
+                n.reverse(res)
+
+        res.append(self._value)
+
+
+class Tree:
+    root: Node = None  # Token - указатель на корень
+
+    def Reverse(self):
+        res = list()
+        self.root.reverse(res)
+        return res
 
 
 class SynthaxError(Exception):
@@ -126,133 +168,6 @@ class LexicalAnalyzer:
             raise SynthaxError(f"недопустимый необъявленный идентификатор {identifier}", line_number + 1,
                                current_character_number + 1)
 
-    def uravnenie(self):
-        line = self.lines[self.current_line_number]
-        line = line.split(COMMENTS_START_SYMBOL)[0]
-        # идентификатор
-        token = ''
-        if line[self.current_character_number] not in TOKEN_ALLOWED_FIRST_SYMBOL:
-            raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
-        while line[self.current_character_number] not in {'=', ' '}:
-            token += line[self.current_character_number]
-            self.current_character_number += 1
-
-        self.equation_stack.append(token)
-        # символ равно
-        if line[self.current_character_number] == ' ':
-            self.current_character_number += 1
-        if line[self.current_character_number] == '=':
-            self.current_character_number += 1
-            self.equation_stack.append('=')
-        else:
-            raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
-        # выражение
-        self.vyrazhenie(line)
-
-    def vyrazhenie(self, line):
-        if line[self.current_character_number] == ' ':
-            self.current_character_number += 1
-        # слагаемое
-        self.slagaemoe(line)
-
-        # проверка конца строки
-        if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
-            return
-
-        while self.current_character_number < len(line):
-            # символ сложения или вычитания
-            if line[self.current_character_number] == ' ':
-                self.current_character_number += 1
-            if line[self.current_character_number] in {'+', '-'}:
-                self.equation_stack.append(line[self.current_character_number])
-                self.current_character_number += 1
-            else:
-                return
-            # слагаемое
-            self.slagaemoe(line)
-
-    def slagaemoe(self, line):
-        if line[self.current_character_number] == ' ':
-            self.current_character_number += 1
-        # проверка конца строки
-        if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
-            raise SynthaxError("недопустимый символ", self.current_line_number + 1, self.current_character_number + 1)
-        # множитель
-        self.mnozhitel(line)
-
-        while self.current_character_number < len(line):
-
-            # проверка конца строки
-            if line[self.current_character_number] == '\n' or self.current_character_number == len(line):
-                return
-
-            if line[self.current_character_number] == ' ':
-                self.current_character_number += 1
-
-            # символ умножения или деления
-            if line[self.current_character_number] in {'*', '/'}:
-                self.equation_stack.append(line[self.current_character_number])
-                self.current_character_number += 1
-                if line[self.current_character_number] == ' ':
-                    self.current_character_number += 1
-                # множитель
-                self.mnozhitel(line)
-
-    def mnozhitel(self, line):
-        # переменная
-        if line[self.current_character_number] in TOKEN_ALLOWED_FIRST_SYMBOL:
-            token = line[self.current_character_number]
-            self.current_character_number += 1
-            while line[self.current_character_number] in TOKEN_ALLOWED_SYMBOLS:
-                token += line[self.current_character_number]
-                self.current_character_number += 1
-            self.equation_stack.append(token)
-        # число
-        elif line[self.current_character_number] in string.digits:
-            token = line[self.current_character_number]
-            self.current_character_number += 1
-
-            is_float = False
-            while line[self.current_character_number] in string.digits:
-                token += line[self.current_character_number]
-                self.current_character_number += 1
-
-            if line[self.current_character_number] == '.':
-                token += line[self.current_character_number]
-                is_float = True
-                self.current_character_number += 1
-
-            if is_float:
-                while line[self.current_character_number] in string.digits:
-                    token += line[self.current_character_number]
-                self.current_character_number += 1
-            self.equation_stack.append(token)
-        # скобки
-        elif line[self.current_character_number] == '(':
-            self.current_character_number += 1
-            self.equation_stack.append('(')
-            self.vyrazhenie(line)
-
-            if line[self.current_character_number] == ')':
-                self.current_character_number += 1
-                self.equation_stack.append(')')
-            else:
-                raise SynthaxError("недопустимый символ", self.current_line_number + 1,
-                                   self.current_character_number + 1)
-        elif line[self.current_character_number] == '\'':
-            self.current_character_number += 1
-            token = ''
-            while line[self.current_character_number] != '\'' and self.current_character_number < len(line):
-                token += line[self.current_character_number]
-                self.current_character_number += 1
-
-            if line[self.current_character_number] == '\'':
-                self.current_character_number += 1
-
-            self.equation_stack.append(token)
-
-    def uslovie(self):
-        pass
 
     def rollback(self):
         self.current_line_number = self.saved_position['line']
@@ -332,7 +247,12 @@ class LexicalAnalyzer:
                                                                           TokenConstructions.IF_DECLARATION_START,
                                                                           TokenConstructions.SIGN_EQUAL,
                                                                           TokenConstructions.SIGN_LESS,
-                                                                          TokenConstructions.SIGN_GREATER}:
+                                                                          TokenConstructions.SIGN_GREATER,
+                                                                          TokenConstructions.LBR,
+                                                                          TokenConstructions.SIGN_PLUS,
+                                                                          TokenConstructions.SIGN_MINUS,
+                                                                          TokenConstructions.SIGN_MULTIPLICATION,
+                                                                          TokenConstructions.SIGN_DIVISION,}:
                 self.set_state(TokenConstructions.NEW_IDENTIFIER)
                 token += c
             elif c in TOKEN_ALLOWED_SYMBOLS and self.current_state == TokenConstructions.NEW_IDENTIFIER:
@@ -396,7 +316,12 @@ class LexicalAnalyzer:
             elif c in string.digits and self.current_state in {TokenConstructions.EQUATION,
                                                                TokenConstructions.SIGN_GREATER,
                                                                TokenConstructions.SIGN_LESS,
-                                                               TokenConstructions.SIGN_EQUAL}:
+                                                               TokenConstructions.SIGN_EQUAL,
+                                                               TokenConstructions.LBR,
+                                                               TokenConstructions.SIGN_PLUS,
+                                                               TokenConstructions.SIGN_MINUS,
+                                                               TokenConstructions.SIGN_MULTIPLICATION,
+                                                               TokenConstructions.SIGN_DIVISION,}:
                 self.set_state(TokenConstructions.NEW_CONSTANT_INTEGER)
                 token += c
             elif c in string.digits and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
@@ -418,6 +343,120 @@ class LexicalAnalyzer:
                 return True
             elif c == ':' and self.current_state == TokenConstructions.COLON:
                 self.current_token = Token(c, TokenType.SIGN_COLON)
+                token = ''
+                self.current_character_number += 1
+                return True
+
+            elif c == '(' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
+                self.current_token = Token(token, TokenType.IDENTIFIER)
+                self.set_state(TokenConstructions.LBR)
+                token = ''
+                return True
+            elif c == '(' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
+                self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
+                self.set_state(TokenConstructions.LBR)
+                token = ''
+                return True
+            elif c == '(' and self.current_state == TokenConstructions.LBR:
+                self.current_token = Token(c, TokenType.SIGN_LBR)
+                token = ''
+                self.current_character_number += 1
+                return
+            elif c == '(' and self.current_state == TokenConstructions.EQUATION:
+                self.current_token = Token(c, TokenType.SIGN_LBR)
+                self.set_state(TokenConstructions.LBR)
+                token = ''
+                self.current_character_number += 1
+                return True
+
+            elif c == ')' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
+                self.current_token = Token(token, TokenType.IDENTIFIER)
+                self.set_state(TokenConstructions.RBR)
+                token = ''
+                return True
+            elif c == ')' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
+                self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
+                self.set_state(TokenConstructions.RBR)
+                token = ''
+                return True
+            elif c == ')' and self.current_state == TokenConstructions.RBR:
+                self.current_token = Token(c, TokenType.SIGN_RBR)
+                token = ''
+                self.current_character_number += 1
+                return True
+
+            elif c == '+' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
+                self.current_token = Token(token, TokenType.IDENTIFIER)
+                self.set_state(TokenConstructions.SIGN_PLUS)
+                token = ''
+                return True
+            elif c == '+' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
+                self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
+                self.set_state(TokenConstructions.SIGN_PLUS)
+                token = ''
+                return True
+            elif c == '+' and self.current_state in {TokenConstructions.SIGN_PLUS,
+                                                     TokenConstructions.RBR}:
+                self.current_token = Token(c, TokenType.SIGN_PLUS)
+                if self.current_state != TokenConstructions.SIGN_PLUS:
+                    self.set_state(TokenConstructions.SIGN_PLUS)
+                token = ''
+                self.current_character_number += 1
+                return True
+
+            elif c == '-' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
+                self.current_token = Token(token, TokenType.IDENTIFIER)
+                self.set_state(TokenConstructions.SIGN_MINUS)
+                token = ''
+                return True
+            elif c == '-' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
+                self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
+                self.set_state(TokenConstructions.SIGN_MINUS)
+                token = ''
+                return True
+            elif c == '-' and self.current_state in {TokenConstructions.SIGN_MINUS,
+                                                     TokenConstructions.RBR}:
+                if self.current_state != TokenConstructions.SIGN_MINUS:
+                    self.set_state(TokenConstructions.SIGN_MINUS)
+                self.current_token = Token(c, TokenType.SIGN_MINUS)
+                token = ''
+                self.current_character_number += 1
+                return True
+
+            elif c == '*' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
+                self.current_token = Token(token, TokenType.IDENTIFIER)
+                self.set_state(TokenConstructions.SIGN_MULTIPLICATION)
+                token = ''
+                return True
+            elif c == '*' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
+                self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
+                self.set_state(TokenConstructions.SIGN_MULTIPLICATION)
+                token = ''
+                return True
+            elif c == '*' and self.current_state in {TokenConstructions.SIGN_MULTIPLICATION,
+                                                     TokenConstructions.RBR}:
+                if self.current_state != TokenConstructions.SIGN_DIVISION:
+                    self.set_state(TokenConstructions.SIGN_MULTIPLICATION)
+                self.current_token = Token(c, TokenType.SIGN_MULTIPLICATION)
+                token = ''
+                self.current_character_number += 1
+                return True
+
+            elif c == '/' and self.current_state == TokenConstructions.NEW_IDENTIFIER:
+                self.current_token = Token(token, TokenType.IDENTIFIER)
+                self.set_state(TokenConstructions.SIGN_DIVISION)
+                token = ''
+                return True
+            elif c == '/' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
+                self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
+                self.set_state(TokenConstructions.SIGN_DIVISION)
+                token = ''
+                return True
+            elif c == '/' and self.current_state in {TokenConstructions.SIGN_DIVISION,
+                                                     TokenConstructions.RBR}:
+                self.current_token = Token(c, TokenType.SIGN_DIVISION)
+                if self.current_state != TokenConstructions.SIGN_DIVISION:
+                    self.set_state(TokenConstructions.SIGN_DIVISION)
                 token = ''
                 self.current_character_number += 1
                 return True
@@ -498,14 +537,19 @@ class LexicalAnalyzer:
         self.get_token()
         if not self.current_token.type == TokenType.SIGN_EQUATION:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
-        self.get_token()
-        second_variable = self.current_token
-        if second_variable.type == TokenType.IDENTIFIER:
-            second_variable = 'var_' + second_variable.value
-        else:
-            second_variable = second_variable.value
-        if not self.current_token.type in {TokenType.CONSTANT_INTEGER, TokenType.IDENTIFIER}:
+
+        _list, _poliz = list(), list()
+        if not self.on_E(_list):
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
+        _tree = Tree()
+        _tree.root = Node()
+        if not self.ExprToTree(_list, _tree.root):
+            raise Exception("невозможно построить дерево")
+
+        _poliz = _tree.Reverse()
+        second_variable = self.CalculateExpression(_poliz)
+
+
 
         if identifier not in self.identifier_table.keys():
             self.identifier_table[identifier] = second_variable
@@ -649,6 +693,157 @@ class LexicalAnalyzer:
                 self.on_If_block()
 
             self.save_statement()
+
+    def on_E(self, _list: list):
+        if not self.on_T(_list):
+            return False
+
+        while True:
+            self.save_statement()
+            if not self.get_token():
+                return True
+
+            if not self.current_token.type in {TokenType.SIGN_PLUS, TokenType.SIGN_MINUS, TokenType.SIGN_MULTIPLICATION, TokenType.SIGN_DIVISION}:
+                self.rollback()
+                return True
+
+            _list.append(self.current_token)
+
+            if not self.on_T(_list):
+                return False
+
+    def on_T(self, _list: list):
+        self.save_statement()
+        if not self.get_token():
+            return False
+
+        if self.current_token.type == TokenType.SIGN_LBR:
+            _list.append(self.current_token)
+            if not self.on_E(_list):
+                return False
+            if not self.get_token():
+                return False
+            if self.current_token.type != TokenType.SIGN_RBR:
+                return False
+            _list.append(self.current_token)
+        else:
+            self.rollback()
+            if self.on_I(_list):
+                return True
+            else:
+                self.rollback()
+                if not self.on_N(_list):
+                    return False
+
+        return True
+
+    def on_I(self, _list: list):
+        if not self.get_token():
+            return False
+
+        if self.current_token.type != TokenType.IDENTIFIER:
+            return False
+
+        _list.append(self.current_token)
+
+        return True
+
+    def on_N(self, _list: list):
+        if not self.get_token():
+            return False
+        if self.current_token.type != TokenType.CONSTANT_INTEGER:
+            return False
+
+        _list.append(self.current_token)
+
+        return True
+
+    def ExprToTree(self, _list: list, _root: Node):
+        size = len(_list)
+        if size == 0:
+            return False
+        if size == 1:
+            _root._value = _list[0]
+            return True
+
+        if _list[0].type == TokenType.SIGN_LBR and _list[-1].type == TokenType.SIGN_RBR:
+            return self.ExprToTree(_list[1:-1], _root)
+
+        it = 0
+        min_it = 0
+        while it < len(_list):
+            if _list[it].type == TokenType.SIGN_LBR:
+                it += 1
+                brkt_count = 1
+                while brkt_count != 0 and it < len(_list):
+                    if _list[it].type == TokenType.SIGN_LBR:
+                        brkt_count += 1
+                    if _list[it].type == TokenType.SIGN_RBR:
+                        brkt_count -= 1
+                    it += 1
+
+            if _list[it] < _list[min_it]:
+                min_it = it
+
+            it += 1
+
+        _list_1 = _list[:min_it]
+        _list_2 = _list[min_it+1:]
+
+        _root._value = _list[min_it]
+        ptr1 = Node()
+        ptr2 = Node()
+
+        _root._next.append(ptr1)
+        _root._next.append(ptr2)
+
+        if not self.ExprToTree(_list_1, ptr1):
+            return False
+        if not self.ExprToTree(_list_2, ptr2):
+            return False
+
+        return True
+
+    def CalculateExpression(self, _poliz: list):
+        _stack = list()
+        r1, r2 = 0, 0
+        var = 0
+
+        it = 0
+        while it < len(_poliz):
+            if _poliz[it].type == TokenType.IDENTIFIER:
+                if _poliz[it].value not in self.identifier_table.keys():
+                    raise Exception(f"Переменнная {_poliz[it].value} не объявлена")
+                _stack.append(int(self.identifier_table[_poliz[it]]))
+                continue
+            elif _poliz[it].type == TokenType.CONSTANT_INTEGER:
+                _stack.append(int(_poliz[it].value))
+            else:
+                if len(_stack) < 2:
+                    raise Exception("Недостаточное число аргументов у опреатора " + _poliz[it].value)
+
+                r2 = _stack.pop()
+                r1 = _stack.pop()
+
+                if _poliz[it].type == TokenType.SIGN_PLUS:
+                    r1 = r1 + r2
+                elif _poliz[it].type == TokenType.SIGN_MINUS:
+                    r1 = r1 - r2
+                elif _poliz[it].type == TokenType.SIGN_MULTIPLICATION:
+                    r1 = r1 * r2
+                elif _poliz[it].type == TokenType.SIGN_DIVISION:
+                    if r2 == 0:
+                        raise Exception("Деление на 0 запрещено")
+                    r1 = r1 / r2
+
+                _stack.append(r1)
+
+            it += 1
+
+        if len(_stack) > 1:
+            raise Exception("Ошибка вычисления арифметического выражения")
+
+        return _stack[0]
 
     def analyze(self):
         with (open(self.program_filename, 'r') as f):
