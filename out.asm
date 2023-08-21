@@ -1,6 +1,7 @@
 .model small
 .data
-var_twelve dw 12
+var_x dw 1
+var_a dw 2
 
 .code
 start:

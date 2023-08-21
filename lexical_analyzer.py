@@ -261,21 +261,23 @@ class LexicalAnalyzer:
                 self.set_state(TokenConstructions.NEW_IDENTIFIER_END)
                 self.current_token = Token(token, TokenType.IDENTIFIER)
                 token = ''
-                self.current_character_number -= 1
+                # self.current_character_number -= 1
                 return True
             elif c == '=' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
                 self.set_state(TokenConstructions.EQUATION)
-                # self.current_character_number += 1
-                # return True
+                self.current_token = Token(c, TokenType.SIGN_EQUATION)
+                self.current_character_number += 1
+                return True
             elif c == '=' and self.current_state == TokenConstructions.EQUATION:
                 self.set_state(TokenConstructions.SIGN_EQUAL)
                 self.current_token = Token(c, TokenType.SIGN_EQUAL)
                 self.current_character_number += 1
                 return True
             elif c == ' ' and self.current_state == TokenConstructions.EQUATION:
-                self.current_token = Token(c, TokenType.SIGN_EQUATION)
-                self.current_character_number += 1
-                return True
+                pass
+                # self.current_token = Token(c, TokenType.SIGN_EQUATION)
+                # self.current_character_number += 1
+                # return True
             elif c in TOKEN_ALLOWED_FIRST_SYMBOL and self.current_state == TokenConstructions.EQUATION:
                 self.current_token = Token(c, TokenType.SIGN_EQUATION)
                 self.current_character_number += 1
@@ -390,6 +392,12 @@ class LexicalAnalyzer:
                 self.set_state(TokenConstructions.SIGN_PLUS)
                 token = ''
                 return True
+            elif c == '+' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
+                self.current_token = Token(token, TokenType.SIGN_PLUS)
+                self.set_state(TokenConstructions.SIGN_PLUS)
+                token = ''
+                self.current_character_number += 1
+                return True
             elif c == '+' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
                 self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
                 self.set_state(TokenConstructions.SIGN_PLUS)
@@ -408,6 +416,12 @@ class LexicalAnalyzer:
                 self.current_token = Token(token, TokenType.IDENTIFIER)
                 self.set_state(TokenConstructions.SIGN_MINUS)
                 token = ''
+                return True
+            elif c == '-' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
+                self.current_token = Token(token, TokenType.SIGN_MINUS)
+                self.set_state(TokenConstructions.SIGN_MINUS)
+                token = ''
+                self.current_character_number += 1
                 return True
             elif c == '-' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
                 self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
@@ -428,6 +442,12 @@ class LexicalAnalyzer:
                 self.set_state(TokenConstructions.SIGN_MULTIPLICATION)
                 token = ''
                 return True
+            elif c == '*' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
+                self.current_token = Token(token, TokenType.SIGN_MULTIPLICATION)
+                self.set_state(TokenConstructions.SIGN_MULTIPLICATION)
+                token = ''
+                self.current_character_number += 1
+                return True
             elif c == '*' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
                 self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
                 self.set_state(TokenConstructions.SIGN_MULTIPLICATION)
@@ -446,6 +466,12 @@ class LexicalAnalyzer:
                 self.current_token = Token(token, TokenType.IDENTIFIER)
                 self.set_state(TokenConstructions.SIGN_DIVISION)
                 token = ''
+                return True
+            elif c == '/' and self.current_state == TokenConstructions.NEW_IDENTIFIER_END:
+                self.current_token = Token(token, TokenType.SIGN_DIVISION)
+                self.set_state(TokenConstructions.SIGN_DIVISION)
+                token = ''
+                self.current_character_number += 1
                 return True
             elif c == '/' and self.current_state == TokenConstructions.NEW_CONSTANT_INTEGER:
                 self.current_token = Token(token, TokenType.CONSTANT_INTEGER)
@@ -474,7 +500,13 @@ class LexicalAnalyzer:
                 token = ''
                 self.current_character_number += 1
                 return True
-            elif c == ' ' and self.current_state in {TokenConstructions.SIGN_GREATER, TokenConstructions.SIGN_LESS, TokenConstructions.SIGN_EQUAL}:
+            elif c == ' ' and self.current_state in {TokenConstructions.SIGN_GREATER,
+                                                     TokenConstructions.SIGN_LESS,
+                                                     TokenConstructions.SIGN_EQUAL,
+                                                     TokenConstructions.SIGN_PLUS,
+                                                     TokenConstructions.SIGN_MINUS,
+                                                     TokenConstructions.SIGN_MULTIPLICATION,
+                                                     TokenConstructions.SIGN_DIVISION}:
                 pass
             elif c == '\n':
                 pass # обработка ниже
@@ -547,7 +579,7 @@ class LexicalAnalyzer:
             raise Exception("невозможно построить дерево")
 
         _poliz = _tree.Reverse()
-        second_variable = self.CalculateExpression(_poliz)
+        second_variable = round(self.CalculateExpression(_poliz))
 
 
 
@@ -795,7 +827,9 @@ class LexicalAnalyzer:
         ptr2 = Node()
 
         _root._next.append(ptr1)
+        ptr1._next = list()
         _root._next.append(ptr2)
+        ptr2._next = list()
 
         if not self.ExprToTree(_list_1, ptr1):
             return False
@@ -814,7 +848,8 @@ class LexicalAnalyzer:
             if _poliz[it].type == TokenType.IDENTIFIER:
                 if _poliz[it].value not in self.identifier_table.keys():
                     raise Exception(f"Переменнная {_poliz[it].value} не объявлена")
-                _stack.append(int(self.identifier_table[_poliz[it]]))
+                _stack.append(int(self.identifier_table[_poliz[it].value]))
+                it += 1
                 continue
             elif _poliz[it].type == TokenType.CONSTANT_INTEGER:
                 _stack.append(int(_poliz[it].value))
