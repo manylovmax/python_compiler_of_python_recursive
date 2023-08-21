@@ -2,6 +2,7 @@
 .data
 var_x dw 1
 var_a dw 2
+var_b dw 1
 
 .code
 start:

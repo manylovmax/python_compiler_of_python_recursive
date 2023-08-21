@@ -575,6 +575,7 @@ class LexicalAnalyzer:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
         _tree = Tree()
         _tree.root = Node()
+        _tree.root._next = list()
         if not self.ExprToTree(_list, _tree.root):
             raise Exception("невозможно построить дерево")
 
