@@ -90,7 +90,10 @@ class Token:
 
 class Node:
     _value: Token = None  # Token - указатель на токен
-    _next: list = list()  # список указателей на другие узлы
+    _next: list  # список указателей на другие узлы
+
+    def __init__(self):
+        self._next = list()
 
     def reverse(self, res: list):
         if self._next:
@@ -575,7 +578,6 @@ class LexicalAnalyzer:
             raise SynthaxError(f"недопустимый идентификатор {self.current_token.value}", self.current_line_number + 1, self.current_character_number + 1)
         _tree = Tree()
         _tree.root = Node()
-        _tree.root._next = list()
         if not self.ExprToTree(_list, _tree.root):
             raise Exception("невозможно построить дерево")
 
@@ -828,9 +830,7 @@ class LexicalAnalyzer:
         ptr2 = Node()
 
         _root._next.append(ptr1)
-        ptr1._next = list()
         _root._next.append(ptr2)
-        ptr2._next = list()
 
         if not self.ExprToTree(_list_1, ptr1):
             return False
