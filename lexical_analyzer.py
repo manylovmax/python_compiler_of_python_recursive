@@ -589,7 +589,7 @@ class LexicalAnalyzer:
         if identifier not in self.identifier_table.keys():
             self.identifier_table[identifier] = second_variable
         else:
-            self.cg.add_line('mov var_' + identifier + ', ' + second_variable)
+            self.cg.add_line('mov var_' + identifier + ', ' + str(second_variable))
 
     def on_If_block(self):
         current_if_declaration_counter = self.if_declaration_counter
